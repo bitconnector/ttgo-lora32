@@ -20,24 +20,18 @@
 #define OLED_SCL 15
 #define OLED_RST 16
 
-Adafruit_SSD1306 display(128, 32, &Wire, OLED_RST);
+Adafruit_SSD1306 display(128, 64, &Wire, OLED_RST);
 
 
 void setup()
 {
   //initialize Serial Monitor
   Serial.begin(115200);
-  //while (!Serial);
-  Serial.println("LoRa Receiver");
+  Serial.println("starting up...");
 
+  //setup display
   Wire.begin(OLED_SDA, OLED_SCL);
-
-  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
-  { // Address 0x3C for 128x32
-    Serial.println(F("SSD1306 allocation failed"));
-    for (;;)
-      ; // Don't proceed, loop forever
-  }
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
 
   Serial.println("Display initialized");
   display.clearDisplay();
@@ -45,10 +39,10 @@ void setup()
   display.setTextColor(WHITE);
   display.setTextSize(1);
   display.setCursor(0, 0);
-  display.println("Welcome to LORA");
+  display.println("Welcome");
 
   display.setTextSize(1);
-  display.println("Lora sender");
+  display.println("ttgo-lora32-v1");
   display.display();
 
   //setup LoRa transceiver module
