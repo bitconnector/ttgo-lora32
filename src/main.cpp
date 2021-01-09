@@ -123,6 +123,18 @@ void loop()
       display.print("   ");
       displayTimestamp();
       display.println();
+
+      display.print("send: ");
+      display.print(counter);
+      display.println();
+
+      display.print("last reply: ");
+      float lastSeen = (millis() - RecivedDataTime);
+      display.print(lastSeen / 1000);
+      display.println("s");
+      display.print("Data: ");
+      display.println(LoRa.packetRssi());
+      display.print(RecivedData);
     }
 
     else
@@ -147,8 +159,9 @@ void loop()
 
   if (role)
   {
-    if (millis() - Time1 > 1000)
+    if (millis() - Time1 > 200 * (param + 1))
     {
+      blinkLED(100);
       Time1 = millis();
       LoRa.beginPacket();
       LoRa.print(counter);
@@ -193,6 +206,7 @@ void parsePacket()
   int packetSize = LoRa.parsePacket();
   if (packetSize == 0)
     return;
+  RecivedDataTime = millis();
   Serial.print("Received packet '");
   while (LoRa.available())
   {
