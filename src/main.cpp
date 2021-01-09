@@ -11,13 +11,11 @@
 #define rst 14
 #define dio0 26
 
-int counter = 0;
-
 void setup() {
   //initialize Serial Monitor
   Serial.begin(115200);
-  //while (!Serial);
-  Serial.println("LoRa Sender");
+  while (!Serial);
+  Serial.println("LoRa Receiver");
 
   //setup LoRa transceiver module
   LoRa.setPins(ss, rst, dio0);
@@ -37,18 +35,21 @@ void setup() {
   Serial.println("LoRa Initializing OK!");
 }
 
-
 void loop() {
-  Serial.print("Sending packet: ");
-  Serial.println(counter);
+  // try to parse packet
+  int packetSize = LoRa.parsePacket();
+  if (packetSize) {
+    // received a packet
+    Serial.print("Received packet '");
 
-  //Send LoRa packet to receiver
-  LoRa.beginPacket();
-  LoRa.print("hello ");
-  LoRa.print(counter);
-  LoRa.endPacket();
+    // read packet
+    while (LoRa.available()) {
+      String LoRaData = LoRa.readString();
+      Serial.print(LoRaData); 
+    }
 
-  counter++;
-
-  delay(10000);
+    // print RSSI of packet
+    Serial.print("' with RSSI ");
+    Serial.println(LoRa.packetRssi());
+  }
 }
