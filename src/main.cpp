@@ -16,7 +16,7 @@ int counter = 0;
 void setup() {
   //initialize Serial Monitor
   Serial.begin(115200);
-  while (!Serial);
+  //while (!Serial);
   Serial.println("LoRa Sender");
 
   //setup LoRa transceiver module
@@ -36,6 +36,7 @@ void setup() {
   LoRa.setSyncWord(0xF3);
   Serial.println("LoRa Initializing OK!");
 }
+
 
 void loop() {
   Serial.print("Sending packet: ");
