@@ -72,7 +72,6 @@ void blinkLED(unsigned long duration);
 void updateLED();
 
 void displayTimestamp();
-void parsePacket();
 bool Button = 1;
 unsigned long ButtonTime;
 
@@ -84,6 +83,7 @@ int counter;
 
 String RecivedData;
 unsigned long RecivedDataTime;
+unsigned int Roundtrip;
 
 void loop()
 {
@@ -132,12 +132,17 @@ void loop()
       float lastSeen = (millis() - RecivedDataTime);
       display.print(lastSeen / 1000);
       display.println("s");
+
+      display.print("roundtrip: ");
+      display.print(Roundtrip);
+      display.println("ms");
+      
       display.print("Data: ");
       display.print(LoRa.packetRssi());
       display.print(" ->");
-      display.println(pow(10,(65-LoRa.packetRssi())/(10*3))/1000,0);
+      display.println(pow(10, (65 - LoRa.packetRssi()) / (10 * 3)) / 1000, 0);
       display.print(RecivedData);
-      display.drawRect(0, 60, int(125+LoRa.packetRssi()),4,SSD1306_WHITE);
+      display.drawRect(0, 60, int(125 + LoRa.packetRssi()), 4, SSD1306_WHITE);
     }
 
     else
@@ -172,7 +177,20 @@ void loop()
       counter++;
     }
     // try to parse packet
-    parsePacket();
+    int packetSize = LoRa.parsePacket();
+    if (packetSize != 0)
+    {
+      RecivedDataTime = millis();
+      Roundtrip = (RecivedDataTime-Time1);
+      Serial.print("Received packet '");
+      while (LoRa.available())
+      {
+        RecivedData = LoRa.readString();
+        Serial.print(RecivedData);
+      }
+      Serial.print("' with RSSI ");
+      Serial.println(LoRa.packetRssi());
+    }
   }
   else
   {
@@ -202,22 +220,6 @@ void loop()
     }
   }
   updateLED();
-}
-
-void parsePacket()
-{
-  int packetSize = LoRa.parsePacket();
-  if (packetSize == 0)
-    return;
-  RecivedDataTime = millis();
-  Serial.print("Received packet '");
-  while (LoRa.available())
-  {
-    RecivedData = LoRa.readString();
-    Serial.print(RecivedData);
-  }
-  Serial.print("' with RSSI ");
-  Serial.println(LoRa.packetRssi());
 }
 
 void displayTimestamp()
