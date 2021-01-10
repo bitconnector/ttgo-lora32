@@ -133,8 +133,11 @@ void loop()
       display.print(lastSeen / 1000);
       display.println("s");
       display.print("Data: ");
-      display.println(LoRa.packetRssi());
+      display.print(LoRa.packetRssi());
+      display.print(" ->");
+      display.println(pow(10,(65-LoRa.packetRssi())/(10*3))/1000,0);
       display.print(RecivedData);
+      display.drawRect(0, 60, int(125+LoRa.packetRssi()),4,SSD1306_WHITE);
     }
 
     else
