@@ -88,26 +88,52 @@ unsigned int Roundtrip;
 void loop()
 {
 
-  if (Button != digitalRead(0))
+  if (!digitalRead(0))
   {
-    //Serial.print("Button ");
-    //Serial.println(Button);
-    Button = digitalRead(0);
-    if (Button)
+    if (!Button)
     {
-      if ((ButtonTime + 1000) < millis())
-      { //pressed for 1s
-        role = !role;
-        param = 0;
+      ButtonTime = millis();
+      Button = 1;
+    }
+    else
+    {
+      if (millis() - ButtonTime < 300)
+      {
+        digitalWrite(LED, HIGH);
+      }
+      else if (millis() - ButtonTime < 2000)
+      {
+        digitalWrite(LED, LOW);
+      }
+      else if (millis() - ButtonTime < 5000)
+      {
+        digitalWrite(LED, HIGH);
       }
       else
       {
-        param++;
-        if (param > 9)
-          param = 0;
+        digitalWrite(LED, LOW);
       }
     }
-    ButtonTime = millis();
+  }
+  else if (Button)
+  {
+    Button = 0;
+    if (millis() - ButtonTime < 300)
+    {
+      Serial.print("got 1");
+    }
+    else if (millis() - ButtonTime < 2000)
+    {
+      Serial.print("got 2");
+    }
+    else if (millis() - ButtonTime < 5000)
+    {
+      Serial.print("got 3");
+    }
+    else
+    {
+      Serial.print("got 4");
+    }
   }
 
   if (millis() - Time1 > 100)
@@ -136,7 +162,7 @@ void loop()
       display.print("roundtrip: ");
       display.print(Roundtrip);
       display.println("ms");
-      
+
       display.print("Data: ");
       display.print(LoRa.packetRssi());
       display.print(" ->");
@@ -181,7 +207,7 @@ void loop()
     if (packetSize != 0)
     {
       RecivedDataTime = millis();
-      Roundtrip = (RecivedDataTime-Time1);
+      Roundtrip = (RecivedDataTime - Time1);
       Serial.print("Received packet '");
       while (LoRa.available())
       {
