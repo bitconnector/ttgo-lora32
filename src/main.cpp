@@ -85,9 +85,8 @@ String RecivedData;
 unsigned long RecivedDataTime;
 unsigned int Roundtrip;
 
-void loop()
+void parseButton()
 {
-
   if (!digitalRead(0))
   {
     if (!Button)
@@ -120,22 +119,29 @@ void loop()
     Button = 0;
     if (millis() - ButtonTime < 300)
     {
-      Serial.print("got 1");
+      Serial.println("got 1");
+      param++;
+      if (param > 9)
+        param = 0;
     }
     else if (millis() - ButtonTime < 2000)
     {
-      Serial.print("got 2");
+      Serial.println("got 2");
+      role = !role;
     }
     else if (millis() - ButtonTime < 5000)
     {
-      Serial.print("got 3");
+      Serial.println("got 3");
     }
     else
     {
-      Serial.print("got 4");
+      Serial.println("got 4");
     }
   }
+}
 
+void updateDisplay()
+{
   if (millis() - Time1 > 100)
   {
     Timed = millis();
@@ -190,6 +196,12 @@ void loop()
 
     display.display();
   }
+}
+
+void loop()
+{
+  parseButton();
+  updateDisplay();
 
   if (role)
   {
@@ -199,7 +211,7 @@ void loop()
       Time1 = millis();
       LoRa.beginPacket();
       LoRa.print(counter);
-      LoRa.endPacket();
+      LoRa.endPacket(1);
       counter++;
     }
     // try to parse packet
