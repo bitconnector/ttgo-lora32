@@ -75,6 +75,7 @@ void updateDisplay();
 void roleLoRaReceiver();
 void roleLoRaSender();
 void updateRoleScreenParam();
+byte signalStrength();
 
 void displayTimestamp();
 bool Button = 1;
@@ -94,7 +95,7 @@ unsigned int Roundtrip;
 void loop()
 {
   parseButton();
-  if (millis() - Timed > 100)
+  if (millis() - Timed > 60)
   {
     Timed = millis();
     updateDisplay();
@@ -136,10 +137,20 @@ void roleLoRaReceiver()
   }
 }
 
+#define RssiHistoryMax 30
+byte rssiHistory[RssiHistoryMax];
+byte rssiHistoryPtr = 0;
 void roleLoRaSender()
 {
   if (millis() - Time1 > 200 * (param + 1))
   {
+    if (RecivedDataTime < Time1)
+    {
+      rssiHistoryPtr++;
+      if (rssiHistoryPtr >= RssiHistoryMax)
+        rssiHistoryPtr = 0;
+      rssiHistory[rssiHistoryPtr] = 0;
+    }
     blinkLED(100);
     Time1 = millis();
     LoRa.beginPacket();
@@ -161,6 +172,10 @@ void roleLoRaSender()
     }
     Serial.print("' with RSSI ");
     Serial.println(LoRa.packetRssi());
+    rssiHistoryPtr++;
+    if (rssiHistoryPtr >= RssiHistoryMax)
+      rssiHistoryPtr = 0;
+    rssiHistory[rssiHistoryPtr] = signalStrength();
   }
 }
 
@@ -237,10 +252,10 @@ void updateRoleScreenParam()
     switch (screen)
     {
     case 1:
-      maxParam = 100;
+      maxParam = 99;
       break;
     default:
-      maxParam = 100;
+      maxParam = 99;
     }
     break;
   default:
@@ -275,35 +290,73 @@ void updateDisplay()
   else if (role == 1)
   {
     display.print("send ");
-    display.print(param);
     if (param < 10)
       display.print(" ");
+    display.print(param);
     display.print("  ");
     displayTimestamp();
     display.println();
 
-    display.print("send: ");
-    display.print(counter);
-    display.println();
+    if (screen == 0)
+    {
+      display.print("send: ");
+      display.print(counter);
+      display.println();
 
-    display.print("last reply: ");
-    float lastSeen = (millis() - RecivedDataTime);
-    display.print(lastSeen / 1000);
-    display.println("s");
+      display.print("last reply: ");
+      float lastSeen = (millis() - RecivedDataTime);
+      display.print(lastSeen / 1000);
+      display.println("s");
 
-    display.print("roundtrip: ");
-    display.print(Roundtrip);
-    display.println("ms");
+      display.print("roundtrip: ");
+      display.print(Roundtrip);
+      display.println("ms");
 
-    display.print("Data: ");
-    display.print(LoRa.packetRssi());
-    display.print(" ->");
-    display.println(pow(10, (65 - LoRa.packetRssi()) / (10 * 3)) / 1000, 0);
-    display.print(RecivedData);
-    display.drawRect(0, 60, int(125 + LoRa.packetRssi()), 4, SSD1306_WHITE);
+      display.print("Data: ");
+      display.print(LoRa.packetRssi());
+      display.print(" ->");
+      display.println(pow(10, (65 - LoRa.packetRssi()) / (10 * 3)) / 1000, 0);
+      display.print(RecivedData);
+      display.drawRect(0, 60, int(signalStrength()), 4, SSD1306_WHITE);
+    }
+    else if (screen == 1)
+    {
+      display.print("history: ");
+      if (rssiHistoryPtr < 10)
+        display.print(" ");
+      display.print(rssiHistoryPtr, DEC);
+
+      display.print(" -> ");
+      display.print(rssiHistory[rssiHistoryPtr], DEC);
+      int i = rssiHistoryPtr;
+      byte j = 0;
+      while (j < RssiHistoryMax)
+      {
+        if (rssiHistory[i] != 0)
+          display.fillRect((j * 4) + 2, 62 - (rssiHistory[i] / 2), 3, (rssiHistory[i] / 2) + 2, SSD1306_WHITE);
+        else
+          display.drawPixel((j * 4) + 3, 63, SSD1306_WHITE);
+        j++;
+        i--;
+        if (i < 0)
+          i = RssiHistoryMax - 1;
+      }
+    }
   }
+  //display.drawLine(5, 5, 115, 55, SSD1306_WHITE);
+  //display.fillRect(2, 40, 3, 20, SSD1306_WHITE);
+  //display.drawRect(5, 40, 3, 10, SSD1306_WHITE);
+  //display.drawRect(9, 40-15, 3, 15, SSD1306_WHITE);
 
   display.display();
+}
+
+byte signalStrength()
+{
+  byte rssi = 121 + LoRa.packetRssi(); //-120 dBm minRSSI
+  if (rssi > 70)
+    rssi = 70;
+  return rssi;
 }
 
 void displayTimestamp()
