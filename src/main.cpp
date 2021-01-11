@@ -70,6 +70,8 @@ void setup()
 
 void blinkLED(unsigned long duration);
 void updateLED();
+void parseButton();
+void updateDisplay();
 
 void displayTimestamp();
 bool Button = 1;
@@ -84,6 +86,68 @@ int counter;
 String RecivedData;
 unsigned long RecivedDataTime;
 unsigned int Roundtrip;
+
+void loop()
+{
+  parseButton();
+  updateDisplay();
+
+  if (role)
+  {
+    if (millis() - Time1 > 200 * (param + 1))
+    {
+      blinkLED(100);
+      Time1 = millis();
+      LoRa.beginPacket();
+      LoRa.print(counter);
+      LoRa.endPacket(1);
+      counter++;
+    }
+    // try to parse packet
+    int packetSize = LoRa.parsePacket();
+    if (packetSize != 0)
+    {
+      RecivedDataTime = millis();
+      Roundtrip = (RecivedDataTime - Time1);
+      Serial.print("Received packet '");
+      while (LoRa.available())
+      {
+        RecivedData = LoRa.readString();
+        Serial.print(RecivedData);
+      }
+      Serial.print("' with RSSI ");
+      Serial.println(LoRa.packetRssi());
+    }
+  }
+  else
+  {
+    int packetSize = LoRa.parsePacket();
+    if (packetSize != 0)
+    {
+      blinkLED(200);
+      RecivedDataTime = millis();
+      Serial.print("Received packet '");
+      while (LoRa.available())
+      {
+        RecivedData = LoRa.readString();
+        Serial.print(RecivedData);
+      }
+      Serial.print("' with RSSI ");
+      Serial.println(LoRa.packetRssi());
+      if (param == 1)
+      {
+        LoRa.beginPacket();
+        LoRa.print(counter);
+        LoRa.endPacket();
+        Serial.print("Replied: ");
+        Serial.print(counter);
+        Serial.println();
+        counter++;
+      }
+    }
+  }
+  updateLED();
+}
 
 void parseButton()
 {
@@ -196,68 +260,6 @@ void updateDisplay()
 
     display.display();
   }
-}
-
-void loop()
-{
-  parseButton();
-  updateDisplay();
-
-  if (role)
-  {
-    if (millis() - Time1 > 200 * (param + 1))
-    {
-      blinkLED(100);
-      Time1 = millis();
-      LoRa.beginPacket();
-      LoRa.print(counter);
-      LoRa.endPacket(1);
-      counter++;
-    }
-    // try to parse packet
-    int packetSize = LoRa.parsePacket();
-    if (packetSize != 0)
-    {
-      RecivedDataTime = millis();
-      Roundtrip = (RecivedDataTime - Time1);
-      Serial.print("Received packet '");
-      while (LoRa.available())
-      {
-        RecivedData = LoRa.readString();
-        Serial.print(RecivedData);
-      }
-      Serial.print("' with RSSI ");
-      Serial.println(LoRa.packetRssi());
-    }
-  }
-  else
-  {
-    int packetSize = LoRa.parsePacket();
-    if (packetSize != 0)
-    {
-      blinkLED(200);
-      RecivedDataTime = millis();
-      Serial.print("Received packet '");
-      while (LoRa.available())
-      {
-        RecivedData = LoRa.readString();
-        Serial.print(RecivedData);
-      }
-      Serial.print("' with RSSI ");
-      Serial.println(LoRa.packetRssi());
-      if (param == 1)
-      {
-        LoRa.beginPacket();
-        LoRa.print(counter);
-        LoRa.endPacket();
-        Serial.print("Replied: ");
-        Serial.print(counter);
-        Serial.println();
-        counter++;
-      }
-    }
-  }
-  updateLED();
 }
 
 void displayTimestamp()
