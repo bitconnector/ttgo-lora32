@@ -72,13 +72,17 @@ void blinkLED(unsigned long duration);
 void updateLED();
 void parseButton();
 void updateDisplay();
+void roleLoRaReceiver();
+void roleLoRaSender();
+void updateRoleScreenParam();
 
 void displayTimestamp();
 bool Button = 1;
 unsigned long ButtonTime;
 
 unsigned long Time1, Timed;
-bool role = 0;
+int role = 0;
+int screen = 0;
 int param = 0;
 
 int counter;
@@ -90,63 +94,74 @@ unsigned int Roundtrip;
 void loop()
 {
   parseButton();
-  updateDisplay();
-
-  if (role)
+  if (millis() - Timed > 100)
   {
-    if (millis() - Time1 > 200 * (param + 1))
+    Timed = millis();
+    updateDisplay();
+  }
+
+  if (role == 0)
+    roleLoRaReceiver();
+  else if (role == 1)
+    roleLoRaSender();
+
+  updateLED();
+}
+
+void roleLoRaReceiver()
+{
+  int packetSize = LoRa.parsePacket();
+  if (packetSize != 0)
+  {
+    blinkLED(200);
+    RecivedDataTime = millis();
+    Serial.print("Received packet '");
+    while (LoRa.available())
     {
-      blinkLED(100);
-      Time1 = millis();
+      RecivedData = LoRa.readString();
+      Serial.print(RecivedData);
+    }
+    Serial.print("' with RSSI ");
+    Serial.println(LoRa.packetRssi());
+    if (param == 1)
+    {
       LoRa.beginPacket();
       LoRa.print(counter);
-      LoRa.endPacket(1);
+      LoRa.endPacket();
+      Serial.print("Replied: ");
+      Serial.print(counter);
+      Serial.println();
       counter++;
     }
-    // try to parse packet
-    int packetSize = LoRa.parsePacket();
-    if (packetSize != 0)
-    {
-      RecivedDataTime = millis();
-      Roundtrip = (RecivedDataTime - Time1);
-      Serial.print("Received packet '");
-      while (LoRa.available())
-      {
-        RecivedData = LoRa.readString();
-        Serial.print(RecivedData);
-      }
-      Serial.print("' with RSSI ");
-      Serial.println(LoRa.packetRssi());
-    }
   }
-  else
+}
+
+void roleLoRaSender()
+{
+  if (millis() - Time1 > 200 * (param + 1))
   {
-    int packetSize = LoRa.parsePacket();
-    if (packetSize != 0)
-    {
-      blinkLED(200);
-      RecivedDataTime = millis();
-      Serial.print("Received packet '");
-      while (LoRa.available())
-      {
-        RecivedData = LoRa.readString();
-        Serial.print(RecivedData);
-      }
-      Serial.print("' with RSSI ");
-      Serial.println(LoRa.packetRssi());
-      if (param == 1)
-      {
-        LoRa.beginPacket();
-        LoRa.print(counter);
-        LoRa.endPacket();
-        Serial.print("Replied: ");
-        Serial.print(counter);
-        Serial.println();
-        counter++;
-      }
-    }
+    blinkLED(100);
+    Time1 = millis();
+    LoRa.beginPacket();
+    LoRa.print(counter);
+    LoRa.endPacket(1);
+    counter++;
   }
-  updateLED();
+  // try to parse packet
+  int packetSize = LoRa.parsePacket();
+  if (packetSize != 0)
+  {
+    RecivedDataTime = millis();
+    Roundtrip = (RecivedDataTime - Time1);
+    Serial.print("Received packet '");
+    while (LoRa.available())
+    {
+      RecivedData = LoRa.readString();
+      Serial.print(RecivedData);
+    }
+    Serial.print("' with RSSI ");
+    Serial.println(LoRa.packetRssi());
+  }
 }
 
 void parseButton()
@@ -185,81 +200,110 @@ void parseButton()
     {
       Serial.println("got 1");
       param++;
-      if (param > 9)
-        param = 0;
     }
     else if (millis() - ButtonTime < 2000)
     {
       Serial.println("got 2");
-      role = !role;
+      screen++;
     }
     else if (millis() - ButtonTime < 5000)
     {
       Serial.println("got 3");
+      role++;
     }
     else
     {
       Serial.println("got 4");
     }
+    updateRoleScreenParam();
   }
+}
+
+int maxScreen = 0;
+int maxParam = 10;
+void updateRoleScreenParam()
+{
+  if (role > 1)
+    role = 0;
+  switch (role)
+  {
+  case 0: //receiver
+    maxParam = 1;
+    break;
+  case 1: //sender
+    maxScreen = 1;
+    if (screen > maxScreen)
+      screen = 0;
+    switch (screen)
+    {
+    case 1:
+      maxParam = 100;
+      break;
+    default:
+      maxParam = 100;
+    }
+    break;
+  default:
+    maxScreen = 0;
+    maxParam = 10;
+  }
+  if (param > maxParam)
+    param = 0;
 }
 
 void updateDisplay()
 {
-  if (millis() - Time1 > 100)
+  display.clearDisplay();
+  display.setCursor(0, 0);
+  display.print("Ro: ");
+  if (role == 0)
   {
-    Timed = millis();
-    display.clearDisplay();
-    display.setCursor(0, 0);
-    display.print("Ro: ");
-    if (role)
-    {
-      display.print("send ");
-      display.print(param);
-      display.print("   ");
-      displayTimestamp();
-      display.println();
-
-      display.print("send: ");
-      display.print(counter);
-      display.println();
-
-      display.print("last reply: ");
-      float lastSeen = (millis() - RecivedDataTime);
-      display.print(lastSeen / 1000);
-      display.println("s");
-
-      display.print("roundtrip: ");
-      display.print(Roundtrip);
-      display.println("ms");
-
-      display.print("Data: ");
-      display.print(LoRa.packetRssi());
-      display.print(" ->");
-      display.println(pow(10, (65 - LoRa.packetRssi()) / (10 * 3)) / 1000, 0);
-      display.print(RecivedData);
-      display.drawRect(0, 60, int(125 + LoRa.packetRssi()), 4, SSD1306_WHITE);
-    }
-
-    else
-    {
-      display.print("empf ");
-      display.print(param);
-      display.print("   ");
-      displayTimestamp();
-      display.println();
-      display.print("last: ");
-      display.print(LoRa.packetRssi());
-      display.print(" @");
-      float lastSeen = (millis() - RecivedDataTime);
-      display.print(lastSeen / 1000);
-      display.println("s");
-      display.println("Data:");
-      display.print(RecivedData);
-    }
-
-    display.display();
+    display.print("empf ");
+    display.print(param);
+    display.print("   ");
+    displayTimestamp();
+    display.println();
+    display.print("last: ");
+    display.print(LoRa.packetRssi());
+    display.print(" @");
+    float lastSeen = (millis() - RecivedDataTime);
+    display.print(lastSeen / 1000);
+    display.println("s");
+    display.println("Data:");
+    display.print(RecivedData);
   }
+  else if (role == 1)
+  {
+    display.print("send ");
+    display.print(param);
+    if (param < 10)
+      display.print(" ");
+    display.print("  ");
+    displayTimestamp();
+    display.println();
+
+    display.print("send: ");
+    display.print(counter);
+    display.println();
+
+    display.print("last reply: ");
+    float lastSeen = (millis() - RecivedDataTime);
+    display.print(lastSeen / 1000);
+    display.println("s");
+
+    display.print("roundtrip: ");
+    display.print(Roundtrip);
+    display.println("ms");
+
+    display.print("Data: ");
+    display.print(LoRa.packetRssi());
+    display.print(" ->");
+    display.println(pow(10, (65 - LoRa.packetRssi()) / (10 * 3)) / 1000, 0);
+    display.print(RecivedData);
+    display.drawRect(0, 60, int(125 + LoRa.packetRssi()), 4, SSD1306_WHITE);
+  }
+
+  display.display();
 }
 
 void displayTimestamp()
