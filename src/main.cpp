@@ -76,6 +76,7 @@ void roleLoRaReceiver();
 void roleLoRaSender();
 void updateRoleScreenParam();
 byte signalStrength();
+int calcDelay();
 
 void displayTimestamp();
 bool Button = 1;
@@ -142,7 +143,7 @@ byte rssiHistory[RssiHistoryMax];
 byte rssiHistoryPtr = 0;
 void roleLoRaSender()
 {
-  if (millis() - Time1 > 200 * (param + 1))
+  if (millis() - Time1 > calcDelay())
   {
     if (RecivedDataTime < Time1)
     {
@@ -289,11 +290,12 @@ void updateDisplay()
   }
   else if (role == 1)
   {
-    display.print("send ");
-    if (param < 10)
+    display.print("send");
+    float delay = float(calcDelay()) / 1000;
+    if (delay < 10)
       display.print(" ");
-    display.print(param);
-    display.print("  ");
+    display.print(delay, 1);
+    display.print(" ");
     displayTimestamp();
     display.println();
 
@@ -349,6 +351,11 @@ void updateDisplay()
   //display.drawRect(9, 40-15, 3, 15, SSD1306_WHITE);
 
   display.display();
+}
+
+int calcDelay()
+{
+  return 200 * (param + 1);
 }
 
 byte signalStrength()
